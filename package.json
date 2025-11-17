@@ -1,0 +1,16 @@
+{
+  "name": "prueba-sii",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de tarjetas de crédito",
+  "scripts": {
+    "install:all": "cd sii-be && npm install && cd ../sii-fe && npm install",
+    "setup": "cd sii-be && npx prisma generate && npx prisma migrate deploy",
+    "dev:be": "cd sii-be && npm run start:dev",
+    "dev:fe": "cd sii-fe && npm run dev",
+    "dev": "concurrently \"npm run dev:be\" \"npm run dev:fe\"",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
