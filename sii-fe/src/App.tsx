@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -13,217 +12,47 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import { CreditCard } from "./components/CreditCard";
 import { CustomTextField } from "./components/CustomTextField";
-import { cardService, type SavedCard } from "./services/cardService";
+import { useCardForm } from "./hooks/useCardForm";
+import { useCards } from "./hooks/useCards";
+import { maskCardNumber } from "./utils/formatters";
 import "./App.css";
 
 function App() {
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiryDate, setExpiryDate] = useState("");
-  const [cardHolder, setCardHolder] = useState("");
-  const [cvv, setCvv] = useState("");
-  const [focused, setFocused] = useState<
-    "number" | "name" | "expiry" | "cvc" | undefined
-  >(undefined);
+  const {
+    cardNumber,
+    expiryDate,
+    cardHolder,
+    cvv,
+    focused,
+    errors,
+    setFocused,
+    handleCardNumberChange,
+    handleExpiryDateChange,
+    handleCardHolderChange,
+    handleCVVChange,
+    validateForm,
+    resetForm,
+    getFormData,
+  } = useCardForm();
 
-  const [errors, setErrors] = useState({
-    cardNumber: "",
-    expiryDate: "",
-    cardHolder: "",
-    cvv: "",
-  });
-
-  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-
-  useEffect(() => {
-    loadCards();
-  }, []);
-
-  const loadCards = async () => {
-    try {
-      setLoading(true);
-      const cards = await cardService.getAll();
-      setSavedCards(cards);
-    } catch (error) {
-      console.error("Error al cargar tarjetas:", error);
-      setApiError("Error al cargar las tarjetas");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const validateCardNumber = (value: string): string => {
-    if (!value) return "El número de tarjeta es requerido";
-    if (!/^\d+$/.test(value))
-      return "El número de tarjeta solo puede contener números";
-    if (value.length !== 16)
-      return "El número de tarjeta debe tener 16 dígitos";
-    return "";
-  };
-
-  const validateExpiryDate = (value: string): string => {
-    if (!value) return "La fecha de vencimiento es requerida";
-
-    const regex = /^(0[1-9]|1[0-2])\/(\d{2})$/;
-    if (!regex.test(value)) return "El formato debe ser MM/YY";
-
-    const [month, year] = value.split("/");
-    const currentYear = new Date().getFullYear() % 100;
-    const maxYear = currentYear + 5;
-    const yearNum = parseInt(year);
-
-    if (yearNum < 22) return "El año no puede ser menor a 22";
-    if (yearNum > maxYear) return `El año no puede ser mayor a ${maxYear}`;
-
-    return "";
-  };
-
-  const validateCardHolder = (value: string): string => {
-    if (!value) return "El nombre del titular es requerido";
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value))
-      return "El nombre solo puede contener letras y letras con tildes";
-    if (value.length > 20) return "El nombre no puede exceder 20 caracteres";
-    return "";
-  };
-
-  const validateCVV = (value: string): string => {
-    if (!value) return "El CVV es requerido";
-    if (!/^\d+$/.test(value)) return "El CVV solo puede contener números";
-    if (value.length !== 3) return "El CVV debe tener 3 dígitos";
-    return "";
-  };
-
-  const handleCardNumberChange = (value: string) => {
-    const numericValue = value.replace(/\D/g, "").slice(0, 16);
-    setCardNumber(numericValue);
-    setErrors((prev) => ({
-      ...prev,
-      cardNumber: validateCardNumber(numericValue),
-    }));
-  };
-
-  const handleExpiryDateChange = (value: string) => {
-    let formattedValue = value.replace(/\D/g, "");
-
-    if (formattedValue.length >= 2) {
-      formattedValue =
-        formattedValue.slice(0, 2) + "/" + formattedValue.slice(2, 4);
-    }
-
-    formattedValue = formattedValue.slice(0, 5);
-    setExpiryDate(formattedValue);
-    setErrors((prev) => ({
-      ...prev,
-      expiryDate: validateExpiryDate(formattedValue),
-    }));
-  };
-
-  const handleCardHolderChange = (value: string) => {
-    const filteredValue = value
-      .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "")
-      .slice(0, 20);
-    setCardHolder(filteredValue);
-    setErrors((prev) => ({
-      ...prev,
-      cardHolder: validateCardHolder(filteredValue),
-    }));
-  };
-
-  const handleCVVChange = (value: string) => {
-    const numericValue = value.replace(/\D/g, "").slice(0, 3);
-    setCvv(numericValue);
-    setErrors((prev) => ({ ...prev, cvv: validateCVV(numericValue) }));
-  };
-
-  const maskCardNumber = (number: string): string => {
-    if (number.length !== 16) return number;
-    return number.slice(0, 2) + "********" + number.slice(-4);
-  };
+  const {
+    savedCards,
+    loading,
+    apiError,
+    successMessage,
+    addCard,
+    deleteCard,
+    clearApiError,
+    clearSuccessMessage,
+  } = useCards();
 
   const handleAddCard = async () => {
-    const newErrors = {
-      cardNumber: validateCardNumber(cardNumber),
-      expiryDate: validateExpiryDate(expiryDate),
-      cardHolder: validateCardHolder(cardHolder),
-      cvv: validateCVV(cvv),
-    };
-
-    setErrors(newErrors);
-
-    if (!Object.values(newErrors).some((error) => error !== "")) {
-      try {
-        setLoading(true);
-        setApiError("");
-
-        const newCard = await cardService.create({
-          cardNumber: cardNumber,
-          cardHolder: cardHolder,
-          expiryDate: expiryDate,
-          cvv: cvv,
-        });
-
-        setSavedCards((prev) => [...prev, newCard]);
-        setSuccessMessage("Tarjeta agregada exitosamente");
-        handleCancel();
-        console.log("Tarjeta agregada exitosamente:", newCard);
-      } catch (error: any) {
-        console.error("Error al agregar tarjeta:", error);
-        if (error.response) {
-          setApiError(
-            error.response.data.message || "Error al agregar la tarjeta"
-          );
-        } else if (error.request) {
-          setApiError(
-            "No se puede conectar con el servidor. Verifique que el backend esté ejecutándose."
-          );
-        } else {
-          setApiError("Error al agregar la tarjeta");
-        }
-      } finally {
-        setLoading(false);
+    if (validateForm()) {
+      const result = await addCard(getFormData());
+      if (result.success) {
+        resetForm();
       }
     }
-  };
-
-  const handleDeleteCard = async (id: string) => {
-    try {
-      setLoading(true);
-      setApiError("");
-
-      await cardService.delete(id);
-      setSavedCards((prev) => prev.filter((card) => card.id !== id));
-      setSuccessMessage("Tarjeta eliminada exitosamente");
-    } catch (error: any) {
-      console.error("Error al eliminar tarjeta:", error);
-      if (error.response) {
-        setApiError(
-          error.response.data.message || "Error al eliminar la tarjeta"
-        );
-      } else if (error.request) {
-        setApiError(
-          "No se puede conectar con el servidor. Verifique que el backend esté ejecutándose."
-        );
-      } else {
-        setApiError("Error al eliminar la tarjeta");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setCardNumber("");
-    setExpiryDate("");
-    setCardHolder("");
-    setCvv("");
-    setErrors({
-      cardNumber: "",
-      expiryDate: "",
-      cardHolder: "",
-      cvv: "",
-    });
   };
 
   return (
@@ -241,11 +70,11 @@ function App() {
       <Snackbar
         open={!!successMessage}
         autoHideDuration={3000}
-        onClose={() => setSuccessMessage("")}
+        onClose={clearSuccessMessage}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
-          onClose={() => setSuccessMessage("")}
+          onClose={clearSuccessMessage}
           severity="success"
           sx={{ width: "100%" }}
         >
@@ -267,7 +96,7 @@ function App() {
           <Alert
             severity="error"
             sx={{ mb: 3 }}
-            onClose={() => setApiError("")}
+            onClose={clearApiError}
           >
             {apiError}
           </Alert>
@@ -419,7 +248,7 @@ function App() {
               </Button>
               <Button
                 variant="outlined"
-                onClick={handleCancel}
+                onClick={resetForm}
                 fullWidth
                 disabled={loading}
                 sx={{
@@ -476,7 +305,7 @@ function App() {
                 >
                   <CardContent sx={{ position: "relative", padding: 3 }}>
                     <IconButton
-                      onClick={() => handleDeleteCard(card.id)}
+                      onClick={() => deleteCard(card.id)}
                       disabled={loading}
                       sx={{
                         position: "absolute",

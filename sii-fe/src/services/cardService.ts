@@ -19,31 +19,14 @@ export interface CreateCardDto {
   cvv: string;
 }
 
-export interface UpdateCardDto {
-  cardNumber?: string;
-  cardHolder?: string;
-  expiryDate?: string;
-  cvv?: string;
-}
-
 export const cardService = {
   async getAll(): Promise<SavedCard[]> {
     const response = await axios.get<SavedCard[]>(API_URL);
     return response.data;
   },
 
-  async getById(id: string): Promise<SavedCard> {
-    const response = await axios.get<SavedCard>(`${API_URL}/${id}`);
-    return response.data;
-  },
-
   async create(card: CreateCardDto): Promise<SavedCard> {
     const response = await axios.post<SavedCard>(API_URL, card);
-    return response.data;
-  },
-
-  async update(id: string, card: UpdateCardDto): Promise<SavedCard> {
-    const response = await axios.patch<SavedCard>(`${API_URL}/${id}`, card);
     return response.data;
   },
 
